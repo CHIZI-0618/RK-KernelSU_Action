@@ -27,6 +27,12 @@ jobs:
         ref: munch-mi
         path: android-kernel
 
+    - name: Setup KernelSU
+      run: |
+        cd android-kernel
+        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        git apply ../KernelSU.patch
+
     - name: Build kernel
       run: |
         cd android-kernel
