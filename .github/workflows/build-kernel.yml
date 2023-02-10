@@ -1,0 +1,59 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup build kernel environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
+
+    - name: Download Clang-ZyC
+      run: |
+        mkdir clang-ZyC
+        wget -q https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-20230210-release/Clang-17.0.0-20230210.tar.gz -O clang-ZyC.tar.gz
+        tar -C clang-ZyC/ -zxf clang-ZyC.tar.gz
+
+    - name: Checkout Rohail33/RealKing-kernel-SM8250
+      uses: actions/checkout@v3
+      with:
+        repository: Rohail33/RealKing-kernel-SM8250
+        ref: munch-mi
+        path: android-kernel
+
+    - name: Build kernel
+      run: |
+        cd android-kernel
+        export PATH=$GITHUB_WORKSPACE/clang-ZyC/bin:$PATH
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export KBUILD_COMPILER_STRING="$(clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')"
+        export KBUILD_BUILD_HOST=GitHub-Action
+        export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
+        make -j$(nproc --all) O=out ARCH=arm64 CC=clang vendor/munch_defconfig
+        make -j$(nproc --all) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- NM=llvm-nm OBJDUMP=llvm-objdump STRIP=llvm-strip
+
+    - name: Checkout osm0sis/AnyKernel3
+      uses: actions/checkout@v3
+      with:
+        repository: osm0sis/AnyKernel3
+        path: AnyKernel3
+
+    - name: Make Anykernel for the kernel
+      run: |
+        cd AnyKernel3
+        cp -fp ../android-kernel/out/arch/arm64/boot/Image.gz ./
+        cp -fp ../android-kernel/out/arch/arm64/boot/dtbo.img ./
+        rm -rf .git* modules patch ramdisk
+
+    - name: Upload AnyKernel3
+      uses: actions/upload-artifact@v3
+      with:
+        name: RealKing-kernel-munch-mi
+        path: AnyKernel3/*
