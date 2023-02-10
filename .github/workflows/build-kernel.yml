@@ -56,6 +56,10 @@ jobs:
         cd AnyKernel3
         cp -fp ../android-kernel/out/arch/arm64/boot/Image.gz ./
         cp -fp ../android-kernel/out/arch/arm64/boot/dtbo.img ./
+        sed -i '/device.name[1-4]/d' anykernel.sh
+        sed -i 's/device.name5=/device.name1=munch/g' anykernel.sh
+        sed -i 's!block=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;!block=auto;!g' anykernel.sh
+        sed -i 's/is_slot_device=0;/is_slot_device=auto;/g' anykernel.sh
         rm -rf .git* modules patch ramdisk
 
     - name: Upload AnyKernel3
